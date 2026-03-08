@@ -37,7 +37,6 @@ class draw_42:
         for dr, dc in digit_2:
             blocked.add((sr + dr, sc + 6 + dc))
 
-        """Close every blocked cell completely"""
         for row, col in blocked:
             maze[row][col]["north"] = True
             maze[row][col]["south"] = True
@@ -45,7 +44,6 @@ class draw_42:
             maze[row][col]["west"] = True
             maze[row][col]["visited"] = True
 
-        """Also close the matching side on all neighboring cells"""
         directions = [
             (-1, 0, "north", "south"),
             (1, 0, "south", "north"),
