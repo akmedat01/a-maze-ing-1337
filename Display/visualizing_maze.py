@@ -13,7 +13,7 @@ Coord = Tuple[int, int]
 
 WALL_CH = "█"
 SPACE_CH = " "
-PATH_CH = "·"
+PATH_CH = " "
 
 COLOR_WALL_BASE = 10
 COLOR_PATH_BASE = 20
@@ -32,12 +32,12 @@ WALL_COLORS: List[Tuple[int, int]] = [
 ]
 
 PATH_COLORS: List[Tuple[int, int]] = [
-    (curses.COLOR_YELLOW, curses.COLOR_BLACK),
-    (curses.COLOR_CYAN, curses.COLOR_BLACK),
-    (curses.COLOR_GREEN, curses.COLOR_BLACK),
-    (curses.COLOR_MAGENTA, curses.COLOR_BLACK),
-    (curses.COLOR_RED, curses.COLOR_BLACK),
-    (curses.COLOR_WHITE, curses.COLOR_BLACK),
+    (curses.COLOR_BLACK, curses.COLOR_CYAN),
+    (curses.COLOR_BLACK, curses.COLOR_GREEN),
+    (curses.COLOR_BLACK, curses.COLOR_MAGENTA),
+    (curses.COLOR_BLACK, curses.COLOR_YELLOW),
+    (curses.COLOR_BLACK, curses.COLOR_RED),
+    (curses.COLOR_BLACK, curses.COLOR_WHITE),
 ]
 
 MAZE_ANIM_DELAY: float = 0.005
@@ -286,17 +286,7 @@ def build_42_pattern(height: int, width: int) -> Optional[List[Coord]]:
 def _build_42_mask_sets(
     cells: List[Coord],
 ) -> Tuple[Set[Coord], Set[Coord], Set[Coord]]:
-    """Build 42 sets on the corner-grid.
-
-    boundary_set:
-        coords that belong to the blocked 42 shape and stay normal wall color.
-
-    fill_set:
-        only the true stroke centers/segments that get highlight color.
-
-    mask_set:
-        union of boundary + fill.
-    """
+    """Build 42 sets on the corner-grid."""
     if not cells:
         return set(), set(), set()
 
@@ -459,14 +449,10 @@ class MazeRenderer:
         self._stdscr.refresh()
 
     def _draw_cell(self, grid_row: int, gc: int) -> None:
-        """Draw one corner-grid cell.
-
-        Priority:
-        entry/exit > path dot > 42 mask > wall > open space
-        """
+        """Draw one corner-grid cell."""
         wp = curses.color_pair(self._wcp())
-        ep = curses.color_pair(COLOR_ENTRY)
-        xp = curses.color_pair(COLOR_EXIT)
+        ep = curses.color_pair(COLOR_ENTRY) | curses.A_BOLD
+        xp = curses.color_pair(COLOR_EXIT) | curses.A_BOLD
         pp = curses.color_pair(self._pcp()) | curses.A_BOLD
         f42 = curses.color_pair(COLOR_42_WALL) | curses.A_BOLD
 
@@ -483,18 +469,18 @@ class MazeRenderer:
         in_42_fill = (grid_row, gc) in self._42_fill_set
 
         if self._maze_drawn and is_cell and (maze_r, maze_c) == self._entry:
-            self._put(sy, sx, WALL_CH, ep)
-            self._put(sy, sx + 1, WALL_CH, ep)
+            self._put(sy, sx, " ", ep)
+            self._put(sy, sx + 1, " ", ep)
             return
 
         if self._maze_drawn and is_cell and (maze_r, maze_c) == self._exit:
-            self._put(sy, sx, WALL_CH, xp)
-            self._put(sy, sx + 1, WALL_CH, xp)
+            self._put(sy, sx, " ", xp)
+            self._put(sy, sx + 1, " ", xp)
             return
 
         if on_path:
-            self._put(sy, sx, PATH_CH, pp)
-            self._put(sy, sx + 1, PATH_CH, pp)
+            self._put(sy, sx, " ", pp)
+            self._put(sy, sx + 1, " ", pp)
             return
 
         if in_42_mask:
@@ -593,13 +579,11 @@ class MazeRenderer:
                 self._stdscr.refresh()
                 time.sleep(MAZE_ANIM_DELAY)
 
-        self._stdscr.refresh()
-        self._draw_menu()
-        self._stdscr.refresh()
         self._maze_drawn = True
+        self._full_redraw()
 
     def _animate_path(self) -> None:
-        """Draw path dots one by one along the solution route."""
+        """Draw path as a solid colored line."""
         if not self._has_enough_space():
             self._draw_too_small()
             return
@@ -613,16 +597,19 @@ class MazeRenderer:
                 return
             if (gr, gc) in self._42_mask_set:
                 continue
+
             self._path_drawn.add((gr, gc))
             sy = gr + 1
             sx = gc * 2 + 1
-            self._put(sy, sx, PATH_CH, pp)
-            self._put(sy, sx + 1, PATH_CH, pp)
+
+            self._put(sy, sx, " ", pp)
+            self._put(sy, sx + 1, " ", pp)
+
             self._stdscr.refresh()
             time.sleep(PATH_ANIM_DELAY)
 
     def _clear_path(self) -> None:
-        """Erase path dots and restore the underlying cells."""
+        """Erase path and restore the underlying cells."""
         old = set(self._path_drawn)
         self._path_drawn = set()
         for gr, gc in old:
