@@ -60,14 +60,11 @@ When a maze is loaded or regenerated, it is not drawn all at once. A BFS travers
 
 ### Pathfinding & Path Display
 
-The shortest path from entry to exit is computed internally by `_solve()` using BFS on the maze graph. The result is a string of directional characters (`N`, `S`, `E`, `W`). Pressing `2` animates the path step by step (20ms per step) along the corner grid. Pressing `2` again instantly clears it. Path cells are drawn in the current path color and cannot overwrite entry, exit, or "42" cells.
+...
 
 ### The "42" Easter Egg
 
-If the maze has at least 9 rows and 13 columns, the digits "4" and "2" are rendered in the center of the maze using a 7×5 pixel-art font (with a 1-column gap between digits). This is handled by two modules:
-
-- **`draw_42.py`** — Called at maze generation time. It marks the digit cells as fully walled and already visited, which causes the generation algorithm to treat them as obstacles and carve around them.
-- **`build_42_pattern()` / `_build_42_display_sets()`** in `visualizing_maze.py` — Called at render time. These functions compute three sets of corner-grid coordinates: the cell centers (colored with the "42" theme), the protected border (rendered as wall), and the blocked maze cells (excluded from path animation).
+If the maze has at least 9 rows and 13 columns, the digits "4" and "2" are rendered in the center of the maze using a 7×5 pixel-art font (with a 1-column gap between digits). The visualiser reads the 42 pattern via `build_42_pattern()` and `_build_42_display_sets()` to compute three sets of corner-grid coordinates: the cell centers (colored with the "42" theme), the protected border (rendered as wall), and the blocked maze cells (excluded from path animation).
 
 ### Color System
 
@@ -81,7 +78,7 @@ The renderer supports three independently rotatable color themes:
 
 When rotating colors, the renderer automatically detects and skips combinations where the path or "42" background would match the wall foreground, ensuring the display always remains readable.
 
-### Hex Output Format (`hexa_display.py`)
+### Hex Output Format
 
 Mazes are serialized to text files using a compact single-character-per-cell encoding. Each cell becomes one hexadecimal digit computed from its four wall states:
 
@@ -123,16 +120,16 @@ The display is responsive to terminal resize events (`KEY_RESIZE`). If the windo
 
 ## Maze Generation
 
-> *(to be completed by mabar)*
+> *(mabar)*
 
 ---
 
 ## Pathfinding
 
-> *(to be completed by mabar)*
+> *(mabar)*
 
 ---
 
 ## Authors
-- **aayat** — Visualisation (`visualizing_maze.py`, `hexa_display.py`, `draw_42.py`) & Makefile
-- **mabar** — Maze generation & Pathfinding
+- **aayat** — Visualisation (`visualizing_maze.py`) & Makefile
+- **mabar** — 
