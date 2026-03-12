@@ -23,18 +23,14 @@ COLOR_42_CENTER_BASE = 30
 WALL_COLORS: List[Tuple[int, int]] = [
     (curses.COLOR_WHITE, curses.COLOR_BLACK),
     (curses.COLOR_YELLOW, curses.COLOR_BLACK),
-    (curses.COLOR_GREEN, curses.COLOR_BLACK),
-    (curses.COLOR_RED, curses.COLOR_BLACK),
     (curses.COLOR_MAGENTA, curses.COLOR_BLACK),
     (curses.COLOR_CYAN, curses.COLOR_BLACK),
 ]
 
 PATH_COLORS: List[Tuple[int, int]] = [
     (curses.COLOR_BLACK, curses.COLOR_CYAN),
-    (curses.COLOR_BLACK, curses.COLOR_GREEN),
     (curses.COLOR_BLACK, curses.COLOR_MAGENTA),
     (curses.COLOR_BLACK, curses.COLOR_YELLOW),
-    (curses.COLOR_BLACK, curses.COLOR_RED),
     (curses.COLOR_BLACK, curses.COLOR_WHITE),
 ]
 
@@ -293,11 +289,7 @@ def build_42_pattern(height: int, width: int) -> Optional[List[Coord]]:
 def _build_42_display_sets(
     cells: List[Coord],
 ) -> Tuple[Set[Coord], Set[Coord]]:
-    """
-    Return:
-        center_set: blocked 42 cell centers
-        protected_set: full 3x3 protected area around each blocked 42 cell
-    """
+    """Return center_set and protected_set for the 42 pattern cells."""
     center_set: Set[Coord] = set()
     protected_set: Set[Coord] = set()
 
@@ -423,6 +415,33 @@ class MazeRenderer:
 
     def _c42p(self) -> int:
         return COLOR_42_CENTER_BASE + self._inner42_idx
+
+    def _current_wall_fg(self) -> int:
+        fg, _ = WALL_COLORS[self._wall_idx]
+        return fg
+
+    def _current_path_bg(self) -> int:
+        _, bg = PATH_COLORS[self._path_idx]
+        return bg
+
+    def _current_42_bg(self) -> Any:
+        """Return the background colour of the current 42 palette entry."""
+        pair = INNER_42_COLORS[self._inner42_idx]
+        if pair == ("gray", "custom_gray"):
+            return "custom_gray"
+        _, bg = pair
+        return bg
+
+    def _path_clashes_with_wall(self) -> bool:
+        """Return True if path background matches wall foreground."""
+        return self._current_path_bg() == self._current_wall_fg()
+
+    def _42_clashes_with_wall(self) -> bool:
+        """Return True if 42 background matches wall foreground."""
+        bg = self._current_42_bg()
+        if bg == "custom_gray":
+            return False
+        return bg == self._current_wall_fg()
 
     def _put(self, y: int, x: int, ch: str, attr: int = 0) -> None:
         try:
@@ -582,7 +601,7 @@ class MazeRenderer:
         self._path_drawn = set()
         pp = curses.color_pair(self._pcp()) | curses.A_BOLD
 
-        for gr, gc in self._path_steps:
+        for gr, gc in self._path_steps[1:-1]:
             if not self._has_enough_space():
                 self._draw_too_small()
                 return
@@ -665,19 +684,44 @@ class MazeRenderer:
 
     def _action_rotate_color(self) -> None:
         self._wall_idx = (self._wall_idx + 1) % len(WALL_COLORS)
+
+        if self._path_clashes_with_wall():
+            self._action_rotate_path_color(redraw=False)
+
+        if self._42_clashes_with_wall():
+            self._action_rotate_42_color(redraw=False)
+
         self._full_redraw()
 
-    def _action_rotate_42_color(self) -> None:
-        self._inner42_idx = (self._inner42_idx + 1) % len(INNER_42_COLORS)
-        self._full_redraw()
+    def _action_rotate_42_color(self, redraw: bool = True) -> None:
+        if len(INNER_42_COLORS) == 0:
+            return
 
-    def _action_rotate_path_color(self) -> None:
-        self._path_idx = (self._path_idx + 1) % len(PATH_COLORS)
-        if self._show_path:
+        for _ in range(len(INNER_42_COLORS)):
+            self._inner42_idx = (
+                self._inner42_idx + 1
+            ) % len(INNER_42_COLORS)
+            if not self._42_clashes_with_wall():
+                break
+
+        if redraw:
             self._full_redraw()
-        else:
-            self._draw_menu()
-            self._stdscr.refresh()
+
+    def _action_rotate_path_color(self, redraw: bool = True) -> None:
+        if len(PATH_COLORS) == 0:
+            return
+
+        for _ in range(len(PATH_COLORS)):
+            self._path_idx = (self._path_idx + 1) % len(PATH_COLORS)
+            if not self._path_clashes_with_wall():
+                break
+
+        if redraw:
+            if self._show_path:
+                self._full_redraw()
+            else:
+                self._draw_menu()
+                self._stdscr.refresh()
 
     def _event_loop(self) -> None:
         self._stdscr.keypad(True)
