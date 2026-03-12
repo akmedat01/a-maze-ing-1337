@@ -95,10 +95,10 @@ def _parse_maze_file(
         for ch in token:
             v = int(ch, 16)
             row.append({
-                "north": bool(v & 8),
-                "east": bool(v & 4),
-                "south": bool(v & 2),
-                "west": bool(v & 1),
+                "north": bool(v & 1),
+                "east": bool(v & 2),
+                "south": bool(v & 4),
+                "west": bool(v & 8),
             })
         maze.append(row)
 

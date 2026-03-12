@@ -10,6 +10,7 @@ class draw_42:
         pat_h = 7
         pat_w = 11
         if height < pat_h + 2 or width < pat_w + 2:
+            print("Maze too small to display the '42' pattern.")
             return
 
         sr = (height - pat_h) // 2
