@@ -6,6 +6,7 @@ import sys
 import time
 from collections import deque
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple
+from Display.draw_42 import draw_42
 
 MazeRow = List[Dict[str, Any]]
 Maze = List[MazeRow]
@@ -51,16 +52,10 @@ PATH_ANIM_DELAY: float = 0.02
 def _parse_maze_file(
     filepath: str,
 ) -> Tuple[Maze, Coord, Coord, int, int]:
-    """Parse maze.txt into a 2-D list of cell dicts.
-
-    Bit encoding: bit3=north, bit2=east, bit1=south, bit0=west.
-    A set bit means the wall is closed.
-    """
     with open(filepath, "r") as fh:
         lines = fh.readlines()
 
     def _coord(s: str) -> Coord:
-        """Parse '(col, row)' into (row, col)."""
         s = s.strip().strip("()")
         col_str, row_str = s.split(",")
         return (int(row_str.strip()), int(col_str.strip()))
@@ -108,7 +103,6 @@ def _parse_maze_file(
 
 
 def _build_closed_grid(height: int, width: int) -> List[List[bool]]:
-    """Return a fully-walled (2h+1)x(2w+1) boolean corner grid."""
     return [[True] * (width * 2 + 1) for _ in range(height * 2 + 1)]
 
 
@@ -119,7 +113,6 @@ def _solve(
     height: int,
     width: int,
 ) -> str:
-    """Return the shortest path as an N/S/E/W string via BFS."""
     moves: List[Tuple[str, int, int, str]] = [
         ("N", -1, 0, "north"),
         ("S", 1, 0, "south"),
@@ -159,7 +152,6 @@ def _solve(
 
 
 def _path_steps(entry: Coord, path: str) -> List[Tuple[int, int]]:
-    """Return corner-grid coords along the solution path with segments."""
     r, c = entry
     steps: List[Tuple[int, int]] = [(r * 2 + 1, c * 2 + 1)]
     for d in path:
@@ -186,7 +178,6 @@ def _maze_reveal_gen(
     entry: Coord,
     blocked_42: Set[Coord],
 ) -> Generator[Tuple[int, int, bool], None, None]:
-    """Yield corner-grid coords in BFS wave-order, skipping 42 cells."""
     dirs = [
         (-1, 0, "north", "south"),
         (1, 0, "south", "north"),
@@ -234,62 +225,66 @@ def _maze_reveal_gen(
                 yield (gr, gc, True)
                 cell = maze[r][c]
 
-                if r > 0 and not cell["north"] and not maze[r - 1][c]["south"]:
+                if (
+                    r > 0
+                    and not cell["north"]
+                    and not maze[r - 1][c]["south"]
+                ):
                     yield (gr - 1, gc, True)
                 if (
-                    r < height - 1 and not cell["south"]
+                    r < height - 1
+                    and not cell["south"]
                     and not maze[r + 1][c]["north"]
                 ):
                     yield (gr + 1, gc, True)
-                if c > 0 and not cell["west"] and not maze[r][c - 1]["east"]:
+                if (
+                    c > 0
+                    and not cell["west"]
+                    and not maze[r][c - 1]["east"]
+                ):
                     yield (gr, gc - 1, True)
                 if (
-                    c < width - 1 and not cell["east"]
+                    c < width - 1
+                    and not cell["east"]
                     and not maze[r][c + 1]["west"]
                 ):
                     yield (gr, gc + 1, True)
 
 
-def build_42_pattern(height: int, width: int) -> Optional[List[Coord]]:
-    """Return maze-cell coords forming the '42' digits, centred."""
+def build_42_pattern(
+    height: int,
+    width: int,
+) -> Optional[List[Coord]]:
     pat_h, pat_w = 7, 11
     if height < pat_h + 2 or width < pat_w + 2:
         return None
 
-    sr = (height - pat_h) // 2
-    sc = (width - pat_w) // 2
-
-    digit_4: List[Tuple[int, int]] = [
-        (0, 0),
-        (1, 0),
-        (2, 0), (2, 2),
-        (3, 0), (3, 1), (3, 2), (3, 3), (3, 4),
-        (4, 2),
-        (5, 2),
-        (6, 2),
+    dummy_maze: Maze = [
+        [
+            {
+                "north": False,
+                "south": False,
+                "east": False,
+                "west": False,
+                "visited": False,
+            }
+            for _ in range(width)
+        ]
+        for _ in range(height)
     ]
-    digit_2: List[Tuple[int, int]] = [
-        (0, 0), (0, 1), (0, 2), (0, 3), (0, 4),
-        (1, 4),
-        (2, 4),
-        (3, 0), (3, 1), (3, 2), (3, 3), (3, 4),
-        (4, 0),
-        (5, 0),
-        (6, 0), (6, 1), (6, 2), (6, 3), (6, 4),
-    ]
+    draw_42.draw_42(dummy_maze, height, width)
 
     cells: List[Coord] = []
-    for dr, dc in digit_4:
-        cells.append((sr + dr, sc + dc))
-    for dr, dc in digit_2:
-        cells.append((sr + dr, sc + 6 + dc))
+    for r in range(height):
+        for c in range(width):
+            if dummy_maze[r][c].get("visited"):
+                cells.append((r, c))
     return cells
 
 
 def _build_42_display_sets(
     cells: List[Coord],
 ) -> Tuple[Set[Coord], Set[Coord]]:
-    """Return center_set and protected_set for the 42 pattern cells."""
     center_set: Set[Coord] = set()
     protected_set: Set[Coord] = set()
 
@@ -308,8 +303,6 @@ def _build_42_display_sets(
 
 
 class MazeRenderer:
-    """Curses-based interactive maze visualiser."""
-
     def __init__(
         self,
         maze_path: str,
@@ -425,7 +418,6 @@ class MazeRenderer:
         return bg
 
     def _current_42_bg(self) -> Any:
-        """Return the background colour of the current 42 palette entry."""
         pair = INNER_42_COLORS[self._inner42_idx]
         if pair == ("gray", "custom_gray"):
             return "custom_gray"
@@ -433,11 +425,9 @@ class MazeRenderer:
         return bg
 
     def _path_clashes_with_wall(self) -> bool:
-        """Return True if path background matches wall foreground."""
         return self._current_path_bg() == self._current_wall_fg()
 
     def _42_clashes_with_wall(self) -> bool:
-        """Return True if 42 background matches wall foreground."""
         bg = self._current_42_bg()
         if bg == "custom_gray":
             return False
