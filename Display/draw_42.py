@@ -1,6 +1,12 @@
+from typing import Any, Dict, List
+
+MazeRow = List[Dict[str, Any]]
+Maze = List[MazeRow]
+
+
 class draw_42:
     @classmethod
-    def draw_42(cls, maze, height, width):
+    def draw_42(cls, maze: Maze, height: int, width: int) -> None:
         pat_h = 7
         pat_w = 11
         if height < pat_h + 2 or width < pat_w + 2:

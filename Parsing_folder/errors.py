@@ -1,3 +1,4 @@
+from typing import Any, Dict
 
 
 class error_handeling:
@@ -5,7 +6,7 @@ class error_handeling:
                      "EXIT", "OUTPUT_FILE", "PERFECT"]
 
     @classmethod
-    def check_mandatory_keys(cls, config):
+    def check_mandatory_keys(cls, config: Dict[str, Any]) -> None:
         """
         this function tries to find all the mandatory
         keys inside the file and raise a valueError if one
@@ -25,7 +26,7 @@ class error_handeling:
             raise ValueError("PERFECT key missing")
 
     @classmethod
-    def check_mandatory_values(cls, config):
+    def check_mandatory_values(cls, config: Dict[str, Any]) -> None:
         """
         this function tries to find all the mandatory
         values inside the file and raise a valueError if one
@@ -71,11 +72,18 @@ class error_handeling:
                     raise ValueError(f"Invalid Perfect value {value}")
 
     @classmethod
-    def check_boundries(cls, config):
-        pass
+    def check_boundries(cls, config: Dict[str, Any]) -> None:
+        start_y, start_x = map(int, config["ENTRY"].split(","))
+        end_y, end_x = map(int, config["EXIT"].split(","))
+        if ((start_x < 0 or start_x >= int(config["WIDTH"]))
+                or (start_y < 0 or start_y >= int(config["HEIGHT"]))):
+            raise ValueError("Entry point out of bound")
+        if ((end_x < 0 or end_x >= int(config["WIDTH"]))
+                or (end_y < 0 or end_y >= int(config["HEIGHT"]))):
+            raise ValueError("Exit point out of bound")
 
     @classmethod
-    def check_added_keys(cls, config):
+    def check_added_keys(cls, config: Dict[str, Any]) -> None:
         """
         this function tries check the added keys if they have the
         key-value format

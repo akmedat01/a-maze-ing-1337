@@ -1,6 +1,9 @@
+from typing import Any, Dict
+
+
 class Parsing:
     @classmethod
-    def read_file(cls, filename):
+    def read_file(cls, filename: str) -> Dict[str, str]:
         config = {}
         with open(filename, "r") as file:
             for line in file:
@@ -16,7 +19,7 @@ class Parsing:
         return config
 
     @classmethod
-    def parse_config(cls, config):
+    def parse_config(cls, config: Dict[str, str]) -> Dict[str, Any]:
         width = int(config["WIDTH"])
         height = int(config["HEIGHT"])
 
@@ -25,8 +28,7 @@ class Parsing:
 
         output_file = config["OUTPUT_FILE"]
         perfect = config["PERFECT"]
-
-        return {
+        output = {
             "width": width,
             "height": height,
             "entry": (entry_row, entry_col),
@@ -34,3 +36,6 @@ class Parsing:
             "output": output_file,
             "perfect": perfect
         }
+        if "seed" in config:
+            output.update({"seed": config["seed"]})
+        return output

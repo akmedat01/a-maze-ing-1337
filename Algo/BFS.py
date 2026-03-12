@@ -1,33 +1,48 @@
 from collections import deque
+from typing import Any, Dict, List, Optional, Tuple
+
+MazeRow = List[Dict[str, Any]]
+Maze = List[MazeRow]
+Coord = Tuple[int, int]
 
 
 class BFS:
     @classmethod
-    def get_neighbors(cls, maze, row, col, height, width):
-        neighbors = []
-        if row - 1 >= 0 and not maze[row][col]["north"]:
-            neighbors.append(("north", row - 1, col))
-        if row + 1 <= height - 1 and not maze[row][col]["south"]:
-            neighbors.append(("south", row + 1, col))
-        if col - 1 >= 0 and not maze[row][col]["west"]:
-            neighbors.append(("west", row, col - 1))
-        if col + 1 <= width - 1 and not maze[row][col]["east"]:
-            neighbors.append(("east", row, col + 1))
-        return neighbors
-
-    @classmethod
-    def find_path(cls, maze, entry, exit, height, width):
-        queue = deque()
-        queue.append(entry)
+    def bfs_solve(cls, maze: Maze, entry: Coord, exit_: Coord,
+                  height: int, width: int) -> str:
+        moves: List[Tuple[str, int, int, str]] = [
+            ("N", -1, 0, "north"),
+            ("S", 1, 0, "south"),
+            ("E", 0, 1, "east"),
+            ("W", 0, -1, "west"),
+        ]
+        queue: deque[Coord] = deque([entry])
         visited = {entry}
-        parent = {(entry, "None"): None}
+        parent: Dict[Coord, Optional[Tuple[Coord, str]]] = {entry: None}
+
         while queue:
-            row, col = queue.popleft()
-            if (row, col) == exit:
+            r, c = queue.popleft()
+            if (r, c) == exit_:
                 break
-            for direction, n_row, n_col in cls.get_neighbors(maze, row, col,
-                                                             height, width):
-                if (n_row, n_col) not in visited:
-                    visited.add((n_row, n_col))
-                    parent[(n_row, n_col, direction)] = (row, col, direction)
-                    queue.append((n_row, n_col))
+            for letter, dr, dc, wk in moves:
+                nr, nc = r + dr, c + dc
+                if (nr, nc) in visited:
+                    continue
+                if not (0 <= nr < height and 0 <= nc < width):
+                    continue
+                if maze[r][c][wk]:
+                    continue
+                visited.add((nr, nc))
+                parent[(nr, nc)] = ((r, c), letter)
+                queue.append((nr, nc))
+
+        if exit_ not in parent:
+            return ""
+        letters: List[str] = []
+        cur: Coord = exit_
+        while parent[cur] is not None:
+            prev, letter = parent[cur]
+            letters.append(letter)
+            cur = prev
+        letters.reverse()
+        return "".join(letters)

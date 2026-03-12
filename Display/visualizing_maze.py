@@ -13,14 +13,12 @@ Coord = Tuple[int, int]
 
 WALL_CH = "█"
 SPACE_CH = " "
-PATH_CH = " "
 
-COLOR_WALL_BASE = 10
-COLOR_PATH_BASE = 20
 COLOR_ENTRY = 1
 COLOR_EXIT = 2
-COLOR_PATH = 3
-COLOR_42_WALL = 4
+COLOR_WALL_BASE = 10
+COLOR_PATH_BASE = 20
+COLOR_42_CENTER_BASE = 30
 
 WALL_COLORS: List[Tuple[int, int]] = [
     (curses.COLOR_WHITE, curses.COLOR_BLACK),
@@ -40,9 +38,18 @@ PATH_COLORS: List[Tuple[int, int]] = [
     (curses.COLOR_BLACK, curses.COLOR_WHITE),
 ]
 
-MAZE_ANIM_DELAY: float = 0.005
+INNER_42_COLORS: List[Tuple[Any, Any]] = [
+    ("gray", "custom_gray"),
+    (curses.COLOR_BLACK, curses.COLOR_MAGENTA),
+    (curses.COLOR_BLACK, curses.COLOR_CYAN),
+    (curses.COLOR_BLACK, curses.COLOR_GREEN),
+    (curses.COLOR_BLACK, curses.COLOR_YELLOW),
+    (curses.COLOR_BLACK, curses.COLOR_WHITE),
+]
+
+MAZE_ANIM_DELAY: float = 0.01
 MAZE_ANIM_BATCH: int = 6
-PATH_ANIM_DELAY: float = 0.008
+PATH_ANIM_DELAY: float = 0.02
 
 
 def _parse_maze_file(
@@ -283,40 +290,29 @@ def build_42_pattern(height: int, width: int) -> Optional[List[Coord]]:
     return cells
 
 
-def _build_42_mask_sets(
+def _build_42_display_sets(
     cells: List[Coord],
-) -> Tuple[Set[Coord], Set[Coord], Set[Coord]]:
-    """Build 42 sets on the corner-grid."""
+) -> Tuple[Set[Coord], Set[Coord]]:
+    """
+    Return:
+        center_set: blocked 42 cell centers
+        protected_set: full 3x3 protected area around each blocked 42 cell
+    """
+    center_set: Set[Coord] = set()
+    protected_set: Set[Coord] = set()
+
     if not cells:
-        return set(), set(), set()
-
-    cell_set: Set[Coord] = set(cells)
-
-    boundary_set: Set[Coord] = set()
-    fill_set: Set[Coord] = set()
+        return center_set, protected_set
 
     for r, c in cells:
         gr, gc = r * 2 + 1, c * 2 + 1
+        center_set.add((gr, gc))
 
-        fill_set.add((gr, gc))
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                protected_set.add((gr + dr, gc + dc))
 
-        boundary_set.add((gr - 1, gc))
-        boundary_set.add((gr + 1, gc))
-        boundary_set.add((gr, gc - 1))
-        boundary_set.add((gr, gc + 1))
-
-        if (r - 1, c) in cell_set:
-            fill_set.add((gr - 1, gc))
-        if (r + 1, c) in cell_set:
-            fill_set.add((gr + 1, gc))
-        if (r, c - 1) in cell_set:
-            fill_set.add((gr, gc - 1))
-        if (r, c + 1) in cell_set:
-            fill_set.add((gr, gc + 1))
-
-    boundary_set -= fill_set
-    mask_set = boundary_set | fill_set
-    return mask_set, boundary_set, fill_set
+    return center_set, protected_set
 
 
 class MazeRenderer:
@@ -327,7 +323,6 @@ class MazeRenderer:
         maze_path: str,
         pattern_42_cells: Optional[List[Coord]] = None,
     ) -> None:
-        """Initialise by parsing maze.txt and computing all derived state."""
         self._maze_path = os.path.abspath(maze_path)
         self._config_path = os.path.join(
             os.path.dirname(self._maze_path), "config.txt"
@@ -349,15 +344,9 @@ class MazeRenderer:
         )
 
         self._blocked_42: Set[Coord] = set(p42)
-        self._42_mask_set: Set[Coord]
-        self._42_boundary_set: Set[Coord]
-        self._42_fill_set: Set[Coord]
-
-        (
-            self._42_mask_set,
-            self._42_boundary_set,
-            self._42_fill_set,
-        ) = _build_42_mask_sets(p42)
+        self._42_center_set, self._42_protected_set = (
+            _build_42_display_sets(p42)
+        )
 
         self._path = _solve(
             self._maze,
@@ -369,28 +358,26 @@ class MazeRenderer:
         self._path_steps: List[Tuple[int, int]] = (
             _path_steps(self._entry, self._path) if self._path else []
         )
+
         self._path_drawn: Set[Coord] = set()
         self._show_path = False
-        self._show_42_color = False
         self._wall_idx = 0
         self._path_idx = 0
+        self._inner42_idx = 0
         self._maze_drawn = False
         self._stdscr: Any = None
 
     def _required_size(self) -> Tuple[int, int]:
-        """Return minimum terminal size needed for maze + menu."""
         rows = self._height * 2 + 11
         cols = (self._width * 2 + 1) * 2 + 3
         return rows, cols
 
     def _has_enough_space(self) -> bool:
-        """Return True if terminal is large enough for maze + menu."""
         max_y, max_x = self._stdscr.getmaxyx()
         need_y, need_x = self._required_size()
         return max_y >= need_y and max_x >= need_x
 
     def _init_colors(self) -> None:
-        """Initialise all curses colour pairs."""
         curses.start_color()
         curses.use_default_colors()
 
@@ -399,36 +386,51 @@ class MazeRenderer:
         for i, (fg, bg) in enumerate(PATH_COLORS):
             curses.init_pair(COLOR_PATH_BASE + i, fg, bg)
 
-        curses.init_pair(
-            COLOR_ENTRY, curses.COLOR_BLACK, curses.COLOR_GREEN
-        )
-        curses.init_pair(
-            COLOR_EXIT, curses.COLOR_BLACK, curses.COLOR_RED
-        )
-        curses.init_pair(
-            COLOR_PATH, curses.COLOR_YELLOW, curses.COLOR_BLACK
-        )
-        curses.init_pair(
-            COLOR_42_WALL, curses.COLOR_MAGENTA, curses.COLOR_BLACK
-        )
+        curses.init_pair(COLOR_ENTRY, curses.COLOR_BLACK, curses.COLOR_GREEN)
+        curses.init_pair(COLOR_EXIT, curses.COLOR_BLACK, curses.COLOR_RED)
+
+        for i, pair in enumerate(INNER_42_COLORS):
+            if pair == ("gray", "custom_gray"):
+                if curses.can_change_color() and curses.COLORS > 8:
+                    try:
+                        curses.init_color(8, 700, 700, 700)
+                        curses.init_pair(
+                            COLOR_42_CENTER_BASE + i,
+                            curses.COLOR_BLACK,
+                            8,
+                        )
+                    except curses.error:
+                        curses.init_pair(
+                            COLOR_42_CENTER_BASE + i,
+                            curses.COLOR_BLACK,
+                            curses.COLOR_WHITE,
+                        )
+                else:
+                    curses.init_pair(
+                        COLOR_42_CENTER_BASE + i,
+                        curses.COLOR_BLACK,
+                        curses.COLOR_WHITE,
+                    )
+            else:
+                fg, bg = pair
+                curses.init_pair(COLOR_42_CENTER_BASE + i, fg, bg)
 
     def _wcp(self) -> int:
-        """Return the active wall colour-pair number."""
         return COLOR_WALL_BASE + self._wall_idx
 
     def _pcp(self) -> int:
-        """Return the active path colour-pair number."""
         return COLOR_PATH_BASE + self._path_idx
 
+    def _c42p(self) -> int:
+        return COLOR_42_CENTER_BASE + self._inner42_idx
+
     def _put(self, y: int, x: int, ch: str, attr: int = 0) -> None:
-        """Write one character, silently ignoring out-of-bounds errors."""
         try:
             self._stdscr.addstr(y, x, ch, attr)
         except curses.error:
             pass
 
     def _draw_too_small(self) -> None:
-        """Show a message when terminal size is too small."""
         self._stdscr.clear()
         max_y, max_x = self._stdscr.getmaxyx()
         need_y, need_x = self._required_size()
@@ -449,12 +451,11 @@ class MazeRenderer:
         self._stdscr.refresh()
 
     def _draw_cell(self, grid_row: int, gc: int) -> None:
-        """Draw one corner-grid cell."""
         wp = curses.color_pair(self._wcp())
         ep = curses.color_pair(COLOR_ENTRY) | curses.A_BOLD
         xp = curses.color_pair(COLOR_EXIT) | curses.A_BOLD
         pp = curses.color_pair(self._pcp()) | curses.A_BOLD
-        f42 = curses.color_pair(COLOR_42_WALL) | curses.A_BOLD
+        center42 = curses.color_pair(self._c42p()) | curses.A_BOLD
 
         sy = grid_row + 1
         sx = gc * 2 + 1
@@ -464,9 +465,7 @@ class MazeRenderer:
         maze_r = (grid_row - 1) // 2
         maze_c = (gc - 1) // 2
         on_path = (grid_row, gc) in self._path_drawn
-
-        in_42_mask = (grid_row, gc) in self._42_mask_set
-        in_42_fill = (grid_row, gc) in self._42_fill_set
+        coord = (grid_row, gc)
 
         if self._maze_drawn and is_cell and (maze_r, maze_c) == self._entry:
             self._put(sy, sx, " ", ep)
@@ -483,16 +482,14 @@ class MazeRenderer:
             self._put(sy, sx + 1, " ", pp)
             return
 
-        if in_42_mask:
-            if self._show_42_color and in_42_fill:
-                self._put(sy, sx, WALL_CH, f42)
-                self._put(sy, sx + 1, WALL_CH, f42)
-            else:
-                self._put(sy, sx, WALL_CH, wp)
-                self._put(sy, sx + 1, WALL_CH, wp)
+        if coord in self._42_center_set and (
+            self._maze_drawn or not self._grid[grid_row][gc]
+        ):
+            self._put(sy, sx, " ", center42)
+            self._put(sy, sx + 1, " ", center42)
             return
 
-        if is_wall:
+        if coord in self._42_protected_set or is_wall:
             self._put(sy, sx, WALL_CH, wp)
             self._put(sy, sx + 1, WALL_CH, wp)
             return
@@ -501,15 +498,12 @@ class MazeRenderer:
         self._put(sy, sx + 1, SPACE_CH)
 
     def _draw_full_grid(self) -> None:
-        """Redraw every corner-grid cell from the current live state."""
         for gr in range(self._height * 2 + 1):
             for gc in range(self._width * 2 + 1):
                 self._draw_cell(gr, gc)
 
     def _draw_menu(self) -> None:
-        """Render the interactive menu below the maze."""
         path_state = "ON" if self._show_path else "OFF"
-        s42 = "ON" if self._show_42_color else "OFF"
         base_y = self._height * 2 + 3
 
         self._put(base_y, 0, "==== A-Maze-ing ====", curses.A_BOLD)
@@ -520,12 +514,11 @@ class MazeRenderer:
         )
         self._put(base_y + 3, 0, "3. Rotate maze colors")
         self._put(base_y + 4, 0, "4. Quit")
-        self._put(base_y + 5, 0, f"5. Toggle 42 pattern color  [{s42}]")
+        self._put(base_y + 5, 0, "5. Rotate 42 inner colors")
         self._put(base_y + 6, 0, "6. Rotate path colors")
         self._put(base_y + 7, 0, "Choice (1-6): ", curses.A_BOLD)
 
     def _full_redraw(self) -> None:
-        """Clear screen and redraw maze and menu from scratch."""
         if not self._has_enough_space():
             self._maze_drawn = False
             self._draw_too_small()
@@ -541,7 +534,6 @@ class MazeRenderer:
         self._stdscr.refresh()
 
     def _animate_maze(self) -> None:
-        """Animate maze reveal as a BFS wave; 42-blocked cells stay solid."""
         if not self._has_enough_space():
             self._maze_drawn = False
             self._draw_too_small()
@@ -551,7 +543,7 @@ class MazeRenderer:
         self._grid = _build_closed_grid(self._height, self._width)
         self._draw_full_grid()
         self._stdscr.refresh()
-        time.sleep(0.25)
+        time.sleep(0.3)
 
         gen = _maze_reveal_gen(
             self._maze,
@@ -570,7 +562,7 @@ class MazeRenderer:
 
             self._grid[gr][gc] = False
 
-            if (gr, gc) in self._42_mask_set:
+            if (gr, gc) in self._42_protected_set:
                 self._grid[gr][gc] = True
 
             self._draw_cell(gr, gc)
@@ -583,7 +575,6 @@ class MazeRenderer:
         self._full_redraw()
 
     def _animate_path(self) -> None:
-        """Draw path as a solid colored line."""
         if not self._has_enough_space():
             self._draw_too_small()
             return
@@ -595,7 +586,7 @@ class MazeRenderer:
             if not self._has_enough_space():
                 self._draw_too_small()
                 return
-            if (gr, gc) in self._42_mask_set:
+            if (gr, gc) in self._42_protected_set:
                 continue
 
             self._path_drawn.add((gr, gc))
@@ -609,7 +600,6 @@ class MazeRenderer:
             time.sleep(PATH_ANIM_DELAY)
 
     def _clear_path(self) -> None:
-        """Erase path and restore the underlying cells."""
         old = set(self._path_drawn)
         self._path_drawn = set()
         for gr, gc in old:
@@ -617,7 +607,6 @@ class MazeRenderer:
         self._stdscr.refresh()
 
     def _reload(self) -> None:
-        """Re-parse maze.txt and recompute all derived state."""
         (
             self._maze,
             self._entry,
@@ -629,12 +618,9 @@ class MazeRenderer:
 
         p42 = build_42_pattern(self._height, self._width) or []
         self._blocked_42 = set(p42)
-
-        (
-            self._42_mask_set,
-            self._42_boundary_set,
-            self._42_fill_set,
-        ) = _build_42_mask_sets(p42)
+        self._42_center_set, self._42_protected_set = (
+            _build_42_display_sets(p42)
+        )
 
         self._path = _solve(
             self._maze,
@@ -651,7 +637,6 @@ class MazeRenderer:
         self._maze_drawn = False
 
     def _action_regenerate(self) -> None:
-        """Call the maze generator, reload state, and re-animate."""
         project_dir = os.path.dirname(self._maze_path)
         if project_dir not in sys.path:
             sys.path.insert(0, project_dir)
@@ -670,7 +655,6 @@ class MazeRenderer:
         self._animate_maze()
 
     def _action_toggle_path(self) -> None:
-        """Toggle the path overlay on or off."""
         self._show_path = not self._show_path
         if self._show_path:
             self._animate_path()
@@ -680,17 +664,14 @@ class MazeRenderer:
         self._stdscr.refresh()
 
     def _action_rotate_color(self) -> None:
-        """Cycle to the next wall colour."""
         self._wall_idx = (self._wall_idx + 1) % len(WALL_COLORS)
         self._full_redraw()
 
-    def _action_toggle_42_color(self) -> None:
-        """Toggle the 42-pattern highlight on or off."""
-        self._show_42_color = not self._show_42_color
+    def _action_rotate_42_color(self) -> None:
+        self._inner42_idx = (self._inner42_idx + 1) % len(INNER_42_COLORS)
         self._full_redraw()
 
     def _action_rotate_path_color(self) -> None:
-        """Cycle to the next path colour."""
         self._path_idx = (self._path_idx + 1) % len(PATH_COLORS)
         if self._show_path:
             self._full_redraw()
@@ -699,7 +680,6 @@ class MazeRenderer:
             self._stdscr.refresh()
 
     def _event_loop(self) -> None:
-        """Block on key input and dispatch the corresponding action."""
         self._stdscr.keypad(True)
 
         while True:
@@ -729,13 +709,12 @@ class MazeRenderer:
                 break
             elif key == ord("5"):
                 if self._has_enough_space():
-                    self._action_toggle_42_color()
+                    self._action_rotate_42_color()
             elif key == ord("6"):
                 if self._has_enough_space():
                     self._action_rotate_path_color()
 
     def _run(self, stdscr: Any) -> None:
-        """Set up curses, animate the maze, then enter the event loop."""
         self._stdscr = stdscr
         curses.curs_set(0)
         self._init_colors()
@@ -748,7 +727,6 @@ class MazeRenderer:
         self._event_loop()
 
     def run(self) -> None:
-        """Launch the curses visualiser."""
         try:
             curses.wrapper(self._run)
         except Exception as exc:
@@ -759,7 +737,6 @@ def display_maze(
     maze_path: str,
     pattern_42_cells: Optional[List[Coord]] = None,
 ) -> None:
-    """Parse maze.txt and open the interactive curses visualiser."""
     MazeRenderer(maze_path, pattern_42_cells).run()
 
 

@@ -1,10 +1,15 @@
 import random
+from typing import Any, Dict, List, Optional, Tuple
+
+MazeRow = List[Dict[str, Any]]
+Maze = List[MazeRow]
 
 
 class Prime:
 
     @classmethod
-    def get_walls(cls, maze, row, col, height, width):
+    def get_walls(cls, maze: Maze, row: int, col: int, height: int,
+                  width: int) -> List[Tuple[int, int, str, int, int]]:
         walls = []
         if row - 1 >= 0:
             walls.append((row, col, "north", row - 1, col))
@@ -17,9 +22,12 @@ class Prime:
         return walls
 
     @classmethod
-    def generate_maze_perfect(cls, maze, row, col, height, width):
+    def generate_maze_perfect(cls, maze: Maze, row: int, col: int, height: int,
+                              width: int, seed: Optional[str]) -> None:
         maze[row][col]["visited"] = True
         frontier = cls.get_walls(maze, row, col, height, width)
+        if seed is not None:
+            random.seed(seed)
         while frontier:
             choice = random.choice(frontier)
             frontier.remove(choice)
@@ -36,21 +44,54 @@ class Prime:
             elif direction == "west":
                 maze[n_row][n_col]["east"] = False
             maze[n_row][n_col]["visited"] = True
-            frontier.extend(cls.get_walls(maze, n_row, n_col, height, width))
+            for wall in cls.get_walls(maze, n_row, n_col, height, width):
+                if wall not in frontier:
+                    frontier.append(wall)
 
     @classmethod
-    def generate_imperfect_maze(cls, maze, row, col,
-                                height, width, chance=0.1):
-        cls.generate_maze_perfect(maze, row, col, height, width)
+    def has_large_open_area(cls, maze: Maze, height: int,
+                            width: int, size: int = 3) -> bool:
+        for r in range(height - size + 1):
+            for c in range(width - size + 1):
+                fully_open = True
+                # loop over all cells inside the size x size block
+                for i in range(size):
+                    for j in range(size):
+                        cell_r = r + i
+                        cell_c = c + j
+                        # check right neighbor
+                        if j < size - 1:
+                            if (maze[cell_r][cell_c]["east"] or maze[cell_r]
+                                    [cell_c+1]["west"]):
+                                fully_open = False
+                                break
+                        # check bottom neighbor
+                        if i < size - 1:
+                            if (maze[cell_r][cell_c]["south"] or maze[cell_r+1]
+                                    [cell_c]["north"]):
+                                fully_open = False
+                                break
+                    if not fully_open:
+                        break
+                if fully_open:
+                    return True  # found a size x size open block
+        return False  # no large open area found
+
+    @classmethod
+    def generate_imperfect_maze(cls, maze: Maze, row: int, col: int,
+                                height: int, width: int, seed: Optional[str],
+                                chance: float = 0.1) -> None:
+        cls.generate_maze_perfect(maze, row, col, height, width, seed)
         directions = [
             ("north", -1, 0, "south"),
             ("south", 1, 0, "north"),
             ("west", 0, -1, "east"),
             ("east", 0, 1, "west")
         ]
+        if seed is not None:
+            random.seed(seed)
         for row in range(height):
             for col in range(width):
-                # random chance to break a wall
                 if random.random() < chance:
                     direction, dr, dc, opposite = random.choice(directions)
                     new_row = row + dr
@@ -59,6 +100,9 @@ class Prime:
                     if 0 <= new_row < height and 0 <= new_col < width:
                         # remove wall both sides
                         maze[row][col][direction] = False
-                        maze[row][col]["visited"] = True
                         maze[new_row][new_col][opposite] = False
-                        maze[new_row][new_col]["visited"] = True
+                        # check if this creates a large open area
+                        if cls.has_large_open_area(maze, height, width):
+                            # undo the wall removal
+                            maze[row][col][direction] = True
+                            maze[new_row][new_col][opposite] = True
