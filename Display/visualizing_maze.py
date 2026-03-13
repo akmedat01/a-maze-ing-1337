@@ -5,6 +5,7 @@ import sys
 import time
 from collections import deque
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple
+from Algo.BFS import BFS
 from Display.draw_42 import draw_42
 
 MazeRow = List[Dict[str, Any]]
@@ -103,51 +104,6 @@ def _parse_maze_file(
 
 def _build_closed_grid(height: int, width: int) -> List[List[bool]]:
     return [[True] * (width * 2 + 1) for _ in range(height * 2 + 1)]
-
-
-def _solve(
-    maze: Maze,
-    entry: Coord,
-    exit_: Coord,
-    height: int,
-    width: int,
-) -> str:
-    moves: List[Tuple[str, int, int, str]] = [
-        ("N", -1, 0, "north"),
-        ("S", 1, 0, "south"),
-        ("E", 0, 1, "east"),
-        ("W", 0, -1, "west"),
-    ]
-    queue: deque[Coord] = deque([entry])
-    visited = {entry}
-    parent: Dict[Coord, Optional[Tuple[Coord, str]]] = {entry: None}
-
-    while queue:
-        r, c = queue.popleft()
-        if (r, c) == exit_:
-            break
-        for letter, dr, dc, wk in moves:
-            nr, nc = r + dr, c + dc
-            if (nr, nc) in visited:
-                continue
-            if not (0 <= nr < height and 0 <= nc < width):
-                continue
-            if maze[r][c][wk]:
-                continue
-            visited.add((nr, nc))
-            parent[(nr, nc)] = ((r, c), letter)
-            queue.append((nr, nc))
-
-    if exit_ not in parent:
-        return ""
-    letters: List[str] = []
-    cur: Coord = exit_
-    while parent[cur] is not None:
-        prev, letter = parent[cur]
-        letters.append(letter)
-        cur = prev
-    letters.reverse()
-    return "".join(letters)
 
 
 def _path_steps(entry: Coord, path: str) -> List[Tuple[int, int]]:
@@ -332,7 +288,7 @@ class MazeRenderer:
             _build_42_display_sets(p42)
         )
 
-        self._path = _solve(
+        self._path = BFS.bfs_solve(
             self._maze,
             self._entry,
             self._exit,
@@ -630,7 +586,7 @@ class MazeRenderer:
             _build_42_display_sets(p42)
         )
 
-        self._path = _solve(
+        self._path = BFS.bfs_solve(
             self._maze,
             self._entry,
             self._exit,
@@ -644,6 +600,8 @@ class MazeRenderer:
         self._show_path = False
         self._maze_drawn = False
 
+    import subprocess
+
     def _action_regenerate(self) -> None:
         project_dir = os.path.dirname(self._maze_path)
         if project_dir not in sys.path:
@@ -652,7 +610,6 @@ class MazeRenderer:
             import importlib
             parsing_mod = importlib.import_module("Parsing_folder.parsing")
             hexa_mod = importlib.import_module("Display.hexa_display")
-            bfs_mod = importlib.import_module("Algo.BFS")
             amaze_mod = importlib.import_module("a_maze_ing")
             importlib.reload(amaze_mod)
 
@@ -665,7 +622,7 @@ class MazeRenderer:
             maze_set = generator.generate_maze(parsed)
 
             hexa_mod.hexa_display.print_maze_hex(maze_set, parsed)
-            path = bfs_mod.BFS.bfs_solve(
+            path = BFS.bfs_solve(
                 maze_set,
                 parsed["entry"],
                 parsed["exit"],
