@@ -3,7 +3,7 @@ import a_maze_ing
 import os
 import sys
 from Display import display_maze
-from Algo.BFS import BFS
+from Algo import BFS
 from Display import hexa_display
 import random
 

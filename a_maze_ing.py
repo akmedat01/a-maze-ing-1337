@@ -23,8 +23,12 @@ class MazeGenerator:
 
     def generate_maze(self, parsed_Values: dict) -> None:
         maze = self.initial_maze(parsed_Values)
-        draw_42.draw_42(maze, parsed_Values["height"],
-                        parsed_Values["width"])
+        cord_42 = draw_42.draw_42(maze, parsed_Values["height"],
+                                  parsed_Values["width"])
+        if parsed_Values["entry"] in cord_42:
+            raise ValueError("Entry Point inside the 42 pattern - change it")
+        if parsed_Values["exit"] in cord_42:
+            raise ValueError("Exit Point inside the 42 pattern - change it")
         if self.algo == "DFS":
             if parsed_Values["perfect"] == "True":
                 DFS.generate_perfect_maze(maze, 0, 0,

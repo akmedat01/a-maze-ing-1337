@@ -64,3 +64,4 @@ class draw_42:
                 if 0 <= nr < height and 0 <= nc < width:
                     maze[row][col][wall] = True
                     maze[nr][nc][opposite] = True
+        return blocked
