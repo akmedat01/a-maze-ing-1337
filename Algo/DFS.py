@@ -1,5 +1,5 @@
 import random
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 MazeRow = List[Dict[str, Any]]
 Maze = List[MazeRow]
@@ -22,14 +22,7 @@ class DFS:
 
     @classmethod
     def generate_perfect_maze(cls, maze: Maze, row: int, col: int, height: int,
-                              width: int, seed: Optional[str]) -> None:
-        if seed is not None:
-            random.seed(seed)
-        cls._dfs(maze, row, col, height, width)
-
-    @classmethod
-    def _dfs(cls, maze: Maze, row: int, col: int,
-             height: int, width: int) -> None:
+                              width: int) -> None:
         maze[row][col]["visited"] = True
         neighbors = cls.check_neighbors(maze, row, col, height, width)
         random.shuffle(neighbors)
@@ -44,8 +37,8 @@ class DFS:
                     maze[n_row][n_col]["west"] = False
                 elif direction == "west":
                     maze[n_row][n_col]["east"] = False
-                cls._dfs(maze, n_row, n_col,
-                         height, width)
+                cls.generate_perfect_maze(maze, n_row, n_col,
+                                          height, width)
 
     @classmethod
     def has_large_open_area(cls, maze: Maze, height: int,
@@ -75,17 +68,14 @@ class DFS:
 
     @classmethod
     def generate_imperfect_maze(cls, maze: Maze, height: int, width: int,
-                                seed: Optional[str],
                                 chance: float = 0.1) -> None:
-        cls.generate_perfect_maze(maze, 0, 0, height, width, seed)
+        cls.generate_perfect_maze(maze, 0, 0, height, width)
         directions = [
             ("north", -1, 0, "south"),
             ("south", 1, 0, "north"),
             ("west", 0, -1, "east"),
             ("east", 0, 1, "west")
         ]
-        if seed is not None:
-            random.seed(seed)
         for row in range(height):
             for col in range(width):
                 if random.random() < chance:

@@ -1,6 +1,6 @@
 PYTHON = python3
 CONFIG = config.txt
-MAIN   = a_maze_ing.py
+MAIN   = main.py
 
 run:
 	$(PYTHON) $(MAIN) $(CONFIG)

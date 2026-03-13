@@ -38,4 +38,6 @@ class Parsing:
         }
         if "seed" in config:
             output.update({"seed": config["seed"]})
+        if "algo" in config:
+            output.update({"algo": config["algo"]})
         return output

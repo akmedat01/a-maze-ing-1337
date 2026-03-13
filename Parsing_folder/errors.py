@@ -35,13 +35,17 @@ class error_handeling:
         for key, value in config.items():
             if key == "WIDTH":
                 try:
-                    int(value)
+                    width = int(value)
+                    if width <= 0:
+                        raise ValueError("width should be strictly positive")
                 except ValueError:
                     raise ValueError(f"Invalid Width value: {value}")
 
             elif key == "HEIGHT":
                 try:
-                    int(value)
+                    height = int(value)
+                    if height <= 0:
+                        raise ValueError("height should be strictly positive")
                 except ValueError:
                     raise ValueError(f"Invalid Height value: {value}")
 
@@ -81,6 +85,8 @@ class error_handeling:
         if ((end_x < 0 or end_x >= int(config["WIDTH"]))
                 or (end_y < 0 or end_y >= int(config["HEIGHT"]))):
             raise ValueError("Exit point out of bound")
+        if (start_x == end_x) and (start_y == end_y):
+            raise ValueError("start and end points should be different")
 
     @classmethod
     def check_added_keys(cls, config: Dict[str, Any]) -> None:

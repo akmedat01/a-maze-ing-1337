@@ -1,5 +1,5 @@
 import random
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 MazeRow = List[Dict[str, Any]]
 Maze = List[MazeRow]
@@ -23,11 +23,9 @@ class Prime:
 
     @classmethod
     def generate_maze_perfect(cls, maze: Maze, row: int, col: int, height: int,
-                              width: int, seed: Optional[str]) -> None:
+                              width: int) -> None:
         maze[row][col]["visited"] = True
         frontier = cls.get_walls(maze, row, col, height, width)
-        if seed is not None:
-            random.seed(seed)
         while frontier:
             choice = random.choice(frontier)
             frontier.remove(choice)
@@ -79,17 +77,15 @@ class Prime:
 
     @classmethod
     def generate_imperfect_maze(cls, maze: Maze, row: int, col: int,
-                                height: int, width: int, seed: Optional[str],
+                                height: int, width: int,
                                 chance: float = 0.1) -> None:
-        cls.generate_maze_perfect(maze, row, col, height, width, seed)
+        cls.generate_maze_perfect(maze, row, col, height, width)
         directions = [
             ("north", -1, 0, "south"),
             ("south", 1, 0, "north"),
             ("west", 0, -1, "east"),
             ("east", 0, 1, "west")
         ]
-        if seed is not None:
-            random.seed(seed)
         for row in range(height):
             for col in range(width):
                 if random.random() < chance:

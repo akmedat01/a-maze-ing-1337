@@ -1,5 +1,4 @@
 import curses
-import importlib
 import os
 import re
 import sys
@@ -650,9 +649,30 @@ class MazeRenderer:
         if project_dir not in sys.path:
             sys.path.insert(0, project_dir)
         try:
-            amaze = importlib.import_module("a_maze_ing")
-            importlib.reload(amaze)
-            amaze.MazeGenerator().generate_maze(self._config_path)
+            import importlib
+            parsing_mod = importlib.import_module("Parsing_folder.parsing")
+            hexa_mod = importlib.import_module("Display.hexa_display")
+            bfs_mod = importlib.import_module("Algo.BFS")
+            amaze_mod = importlib.import_module("a_maze_ing")
+            importlib.reload(amaze_mod)
+
+            raw = parsing_mod.Parsing.read_file(self._config_path)
+            parsed = parsing_mod.Parsing.parse_config(raw)
+
+            generator = amaze_mod.MazeGenerator()
+            if "algo" in parsed:
+                generator.set_algo(parsed["algo"])
+            maze_set = generator.generate_maze(parsed)
+
+            hexa_mod.hexa_display.print_maze_hex(maze_set, parsed)
+            path = bfs_mod.BFS.bfs_solve(
+                maze_set,
+                parsed["entry"],
+                parsed["exit"],
+                parsed["height"],
+                parsed["width"],
+            )
+            hexa_mod.hexa_display.write_path(path, parsed)
         except Exception as exc:
             self._stdscr.clear()
             self._put(0, 0, f"Error: {exc}", curses.A_BOLD)
@@ -660,6 +680,7 @@ class MazeRenderer:
             self._stdscr.getch()
             self._full_redraw()
             return
+
         self._reload()
         self._animate_maze()
 
