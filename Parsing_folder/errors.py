@@ -77,8 +77,8 @@ class error_handeling:
 
     @classmethod
     def check_boundries(cls, config: Dict[str, Any]) -> None:
-        start_y, start_x = map(int, config["ENTRY"].split(","))
-        end_y, end_x = map(int, config["EXIT"].split(","))
+        start_x, start_y = map(int, config["ENTRY"].split(","))
+        end_x, end_y = map(int, config["EXIT"].split(","))
         if ((start_x < 0 or start_x >= int(config["WIDTH"]))
                 or (start_y < 0 or start_y >= int(config["HEIGHT"]))):
             raise ValueError("Entry point out of bound")
