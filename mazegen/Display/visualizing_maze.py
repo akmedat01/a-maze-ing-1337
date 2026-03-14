@@ -649,10 +649,10 @@ class MazeRenderer:
     def _action_regenerate(self) -> None:
         try:
             import a_maze_ing as _main
-            _original = _main.display_maze
-            _main.display_maze = lambda *a, **kw: None
+            _original = getattr(_main, "display_maze")
+            setattr(_main, "display_maze", lambda *a, **kw: None)
             _main.main(self._config_path)
-            _main.display_maze = _original
+            setattr(_main, "display_maze", _original)
         except Exception as exc:
             self._stdscr.clear()
             self._put(0, 0, f"Error: {exc}", curses.A_BOLD)
