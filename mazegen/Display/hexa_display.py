@@ -6,7 +6,7 @@ Maze = List[MazeRow]
 
 class hexa_display:
     @classmethod
-    def convert_maze_col(cls, col: int) -> None:
+    def convert_maze_col(cls, col: dict[str, bool]) -> str:
         i = 0
         if col["north"]:
             i += 1

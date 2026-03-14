@@ -6,7 +6,7 @@ Maze = List[MazeRow]
 
 class draw_42:
     @classmethod
-    def draw_42(cls, maze: Maze, height: int, width: int) -> None:
+    def get_blocked_cells(cls, maze: Maze, height: int, width: int) -> None:
         pat_h = 7
         pat_w = 11
         if height < pat_h + 2 or width < pat_w + 2:
@@ -64,4 +64,3 @@ class draw_42:
                 if 0 <= nr < height and 0 <= nc < width:
                     maze[row][col][wall] = True
                     maze[nr][nc][opposite] = True
-        return blocked

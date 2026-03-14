@@ -5,7 +5,7 @@ import sys
 import time
 from collections import deque
 from typing import Any, Dict, Generator, List, Optional, Set, Tuple
-from Display.draw_42 import draw_42
+from .draw_42 import draw_42
 
 MazeRow = List[Dict[str, Any]]
 Maze = List[MazeRow]
@@ -271,7 +271,7 @@ def build_42_pattern(
         ]
         for _ in range(height)
     ]
-    draw_42.draw_42(dummy_maze, height, width)
+    draw_42.get_blocked_cells(dummy_maze, height, width)
 
     cells: List[Coord] = []
     for r in range(height):
@@ -359,7 +359,7 @@ class MazeRenderer:
     def _has_enough_space(self) -> bool:
         max_y, max_x = self._stdscr.getmaxyx()
         need_y, need_x = self._required_size()
-        return max_y >= need_y and max_x >= need_x
+        return bool(max_y >= need_y and max_x >= need_x)
 
     def _init_colors(self) -> None:
         curses.start_color()
@@ -430,7 +430,7 @@ class MazeRenderer:
         bg = self._current_42_bg()
         if bg == "custom_gray":
             return False
-        return bg == self._current_wall_fg()
+        return bool(bg == self._current_wall_fg())
 
     def _put(self, y: int, x: int, ch: str, attr: int = 0) -> None:
         try:
@@ -646,7 +646,7 @@ class MazeRenderer:
 
     def _action_regenerate(self) -> None:
         try:
-            import main as _main
+            import a_maze_ing as _main
             _original = _main.display_maze
             _main.display_maze = lambda *a, **kw: None
             _main.main(self._config_path)

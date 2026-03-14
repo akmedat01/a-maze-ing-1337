@@ -41,7 +41,9 @@ class BFS:
         letters: List[str] = []
         cur: Coord = exit_
         while parent[cur] is not None:
-            prev, letter = parent[cur]
+            val = parent[cur]
+            assert val is not None
+            prev, letter = val
             letters.append(letter)
             cur = prev
         letters.reverse()

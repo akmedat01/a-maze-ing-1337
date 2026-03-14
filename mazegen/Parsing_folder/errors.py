@@ -1,4 +1,6 @@
-from typing import Any, Dict
+from typing import Any, Dict, List
+MazeRow = List[Dict[str, Any]]
+Maze = List[MazeRow]
 
 
 class error_handeling:
@@ -103,3 +105,12 @@ class error_handeling:
         except ValueError:
             raise ValueError("Added keys should "
                              "contain key-value format")
+
+    @classmethod
+    def check_cell_42(cls, maze: Maze, coord: tuple[int, int],
+                      label: str) -> None:
+        row, col = coord
+        cell = maze[row][col]
+        walls = [cell["north"], cell["east"], cell["south"], cell["west"]]
+        if all(walls):
+            raise ValueError(f"{label} is inside the 42 pattern - change it")

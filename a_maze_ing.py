@@ -1,50 +1,49 @@
-from Algo import DFS
-from Algo import Prime
-from Display import draw_42
+from mazegen import Parsing, error_handeling
+from mazegen import MazeGenerator
+import os
+import sys
+from mazegen import display_maze
+from mazegen import BFS
+from mazegen import hexa_display
+import random
 
 
-class MazeGenerator:
-    def __init__(self) -> None:
-        self.algo = "Prime"
+def main(filename: str) -> None:
+    try:
+        config = Parsing.read_file(filename)
+        error_handeling.check_mandatory_keys(config)
+        error_handeling.check_mandatory_values(config)
+        error_handeling.check_added_keys(config)
+        error_handeling.check_boundries(config)
+        parsed_Values = Parsing.parse_config(config)
+        seed = None
+        if "seed" in parsed_Values:
+            seed = parsed_Values["seed"]
+            random.seed(seed)
+        algo = parsed_Values.get("algo", "DFS")
+        maze_a = MazeGenerator(parsed_Values["height"], parsed_Values["width"],
+                               algo, parsed_Values["perfect"])
+        maze_set = maze_a.generate_maze()
+        error_handeling.check_cell_42(maze_set,
+                                      parsed_Values["entry"], "entry")
+        error_handeling.check_cell_42(maze_set,
+                                      parsed_Values["exit"], "exit")
+        hexa_display.print_maze_hex(maze_set, parsed_Values)
+        path = BFS.bfs_solve(maze_set, parsed_Values["entry"],
+                             parsed_Values["exit"],
+                             parsed_Values["height"],
+                             parsed_Values["width"])
+        hexa_display.write_path(path, parsed_Values)
+        project_dir = os.path.dirname(os.path.abspath(filename))
+        maze_file = os.path.join(project_dir, parsed_Values["output"])
+        display_maze(maze_file)
+    except ValueError as e:
+        print(e)
 
-    def initial_maze(self, config):
-        maze = [
-            [
-                {"north": True, "east": True, "south": True, "west": True,
-                 "visited": False}
-                for _ in range(config["width"])
-            ]
-            for _ in range(config["height"])
-        ]
-        return maze
 
-    def set_algo(self, algo: str) -> None:
-        self.algo = algo
-
-    def generate_maze(self, parsed_Values: dict) -> None:
-        maze = self.initial_maze(parsed_Values)
-        cord_42 = draw_42.draw_42(maze, parsed_Values["height"],
-                                  parsed_Values["width"])
-        if parsed_Values["entry"] in cord_42:
-            raise ValueError("Entry Point inside the 42 pattern - change it")
-        if parsed_Values["exit"] in cord_42:
-            raise ValueError("Exit Point inside the 42 pattern - change it")
-        if self.algo == "DFS":
-            if parsed_Values["perfect"] == "True":
-                DFS.generate_perfect_maze(maze, 0, 0,
-                                          parsed_Values["height"],
-                                          parsed_Values["width"])
-            elif parsed_Values["perfect"] == "False":
-                DFS.generate_imperfect_maze(maze,
-                                            parsed_Values["height"],
-                                            parsed_Values["width"])
-        elif self.algo == "Prime":
-            if parsed_Values["perfect"] == "True":
-                Prime.generate_maze_perfect(maze, 0, 0,
-                                            parsed_Values["height"],
-                                            parsed_Values["width"])
-            elif parsed_Values["perfect"] == "False":
-                Prime.generate_imperfect_maze(maze, 0, 0,
-                                              parsed_Values["height"],
-                                              parsed_Values["width"])
-        return maze
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python3 a_maze_ing.py config.txt")
+        sys.exit(1)
+    config_path = sys.argv[1]
+    main(config_path)

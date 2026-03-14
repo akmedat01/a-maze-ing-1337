@@ -27,7 +27,11 @@ class Parsing:
         exit_col, exit_row = map(int, config["EXIT"].split(","))
 
         output_file = config["OUTPUT_FILE"]
-        perfect = config["PERFECT"]
+        perfect_str = config["PERFECT"]
+        if perfect_str == "True":
+            perfect = True
+        else:
+            perfect = False
         output = {
             "width": width,
             "height": height,
@@ -36,8 +40,8 @@ class Parsing:
             "output": output_file,
             "perfect": perfect
         }
-        if "seed" in config:
+        if "SEED" in config:
             output.update({"seed": config["seed"]})
-        if "algo" in config:
+        if "ALGO" in config:
             output.update({"algo": config["algo"]})
         return output
