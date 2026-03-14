@@ -143,7 +143,9 @@ def _solve(
     letters: List[str] = []
     cur: Coord = exit_
     while parent[cur] is not None:
-        prev, letter = parent[cur]
+        prev_entry = parent[cur]
+        # prev_entry is not None here (checked above), safe to unpack
+        prev, letter = prev_entry  # type: ignore[misc]
         letters.append(letter)
         cur = prev
     letters.reverse()
@@ -253,10 +255,10 @@ def _maze_reveal_gen(
 def build_42_pattern(
     height: int,
     width: int,
-) -> Optional[List[Coord]]:
+) -> List[Coord]:
     pat_h, pat_w = 7, 11
     if height < pat_h + 2 or width < pat_w + 2:
-        return None
+        return []
 
     dummy_maze: Maze = [
         [
@@ -324,7 +326,7 @@ class MazeRenderer:
 
         p42: List[Coord] = (
             pattern_42_cells if pattern_42_cells is not None
-            else (build_42_pattern(self._height, self._width) or [])
+            else build_42_pattern(self._height, self._width)
         )
 
         self._blocked_42: Set[Coord] = set(p42)
@@ -624,7 +626,7 @@ class MazeRenderer:
         ) = _parse_maze_file(self._maze_path)
         self._grid = _build_closed_grid(self._height, self._width)
 
-        p42 = build_42_pattern(self._height, self._width) or []
+        p42 = build_42_pattern(self._height, self._width)
         self._blocked_42 = set(p42)
         self._42_center_set, self._42_protected_set = (
             _build_42_display_sets(p42)
